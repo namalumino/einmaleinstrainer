@@ -1,0 +1,924 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bruch - Dezimal - Prozent Trainer</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            display: ['Fredoka', 'sans-serif'],
+          },
+          colors: {
+            brand: {
+              50: '#f0f9ff',
+              100: '#e0f2fe',
+              500: '#0ea5e9',
+              600: '#0284c7',
+              700: '#0369a1',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* Custom styles for matching tiles and keypad */
+    .perspective { perspective: 1000px; }
+    .tile-card {
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .tile-card:hover {
+      transform: translateY(-2px);
+    }
+    .tile-selected {
+      border-color: #3b82f6 !important;
+      background-color: #eff6ff !important;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.4);
+    }
+    .tile-matched {
+      opacity: 0.2;
+      pointer-events: none;
+      transform: scale(0.95);
+    }
+    .tile-wrong {
+      animation: shake 0.4s ease-in-out;
+      border-color: #ef4444 !important;
+      background-color: #fef2f2 !important;
+    }
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      20%, 60% { transform: translateX(-6px); }
+      40%, 80% { transform: translateX(6px); }
+    }
+    /* Fraction display formatting */
+    .fraction {
+      display: inline-flex;
+      flex-direction: column;
+      vertical-align: middle;
+      text-align: center;
+      padding: 0 0.2em;
+    }
+    .fraction .numerator {
+      border-bottom: 2px solid currentColor;
+      padding-bottom: 2px;
+    }
+    .fraction .denominator {
+      padding-top: 2px;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen font-sans flex flex-col justify-between selection:bg-sky-200">
+
+  <!-- Top Navigation Bar -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
+    <div class="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
+      <div class="flex items-center space-x-3 cursor-pointer" onclick="app.showScreen('dashboard')">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-sky-500 to-indigo-600 flex items-center justify-center text-white font-display text-xl shadow-md">
+          %
+        </div>
+        <div>
+          <h1 class="font-display font-bold text-lg md:text-xl text-slate-800 leading-tight">Mathe-Profi 3in1</h1>
+          <p class="text-xs text-slate-500 hidden sm:block">Brüche • Dezimalzahlen • Prozent</p>
+        </div>
+      </div>
+      
+      <!-- Top Action Controls -->
+      <div class="flex items-center space-x-2">
+        <button id="soundToggleBtn" onclick="app.toggleSound()" class="p-2.5 rounded-xl bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors" title="Ton umschalten">
+          <i class="fas fa-volume-up text-lg"></i>
+        </button>
+        <button onclick="app.showScreen('stats')" class="flex items-center space-x-1.5 px-3 py-2 rounded-xl bg-sky-50 text-sky-700 font-medium text-sm hover:bg-sky-100 transition-colors">
+          <i class="fas fa-chart-line"></i>
+          <span class="hidden sm:inline">Statistik</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-5xl mx-auto px-4 py-6 flex-grow w-full">
+    
+    <!-- DASHBOARD / MODE SELECTION SCREEN -->
+    <section id="screen-dashboard" class="space-y-6">
+      <div class="bg-gradient-to-r from-sky-500 to-indigo-600 rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden">
+        <div class="relative z-10 max-w-xl">
+          <span class="bg-white/20 text-xs uppercase tracking-wider font-semibold px-3 py-1 rounded-full text-white inline-block mb-3">5-Minuten Challenge</span>
+          <h2 class="font-display text-2xl sm:text-4xl font-bold mb-3">Bereit für dein Mathe-Workout?</h2>
+          <p class="text-sky-100 text-sm sm:text-base mb-6">Trainiere deine Rechengeschwindigkeit! Wähle deinen Modus und schaffe so viele Aufgaben wie möglich in 5 Minuten.</p>
+          <div class="flex flex-wrap gap-4 text-xs sm:text-sm">
+            <div class="bg-white/10 backdrop-blur-sm rounded-xl px-4 py-2.5 flex items-center space-x-2">
+              <i class="fas fa-stopwatch text-sky-300 text-base"></i>
+              <span>5 Minuten Zeit</span>
+            </div>
+            <div class="bg-white/10 backdrop-blur-sm rounded-xl px-4 py-2.5 flex items-center space-x-2">
+              <i class="fas fa-fire text-amber-300 text-base"></i>
+              <span>Sofort-Feedback</span>
+            </div>
+          </div>
+        </div>
+        <div class="absolute -right-8 -bottom-8 opacity-10 text-[180px] font-display font-bold select-none pointer-events-none">
+          ½
+        </div>
+      </div>
+
+      <!-- Mode Cards -->
+      <div class="grid md:grid-cols-3 gap-5">
+        <!-- Mode 1: Matching / Memory -->
+        <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm hover:shadow-md transition-all flex flex-col justify-between group">
+          <div>
+            <div class="w-12 h-12 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center text-xl mb-4 group-hover:scale-110 transition-transform">
+              <i class="fas fa-th-large"></i>
+            </div>
+            <h3 class="font-display font-bold text-lg text-slate-800 mb-2">1. Zuordnungs-Grid</h3>
+            <p class="text-slate-600 text-sm mb-4">Verbinde Paare! Klicke auf Kacheln mit gleichem Wert (z. B. 1/4 und 25%), um sie aufzulösen.</p>
+          </div>
+          <button onclick="app.startChallenge('matching')" class="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl shadow-md transition-colors flex items-center justify-center space-x-2">
+            <span>Zuordnung starten</span>
+            <i class="fas fa-arrow-right text-sm"></i>
+          </button>
+        </div>
+
+        <!-- Mode 2: Multiple Choice -->
+        <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm hover:shadow-md transition-all flex flex-col justify-between group">
+          <div>
+            <div class="w-12 h-12 rounded-xl bg-sky-100 text-sky-600 flex items-center justify-center text-xl mb-4 group-hover:scale-110 transition-transform">
+              <i class="fas fa-list-check"></i>
+            </div>
+            <h3 class="font-display font-bold text-lg text-slate-800 mb-2">2. Multiple Choice</h3>
+            <p class="text-slate-600 text-sm mb-4">Wähle die passende Entsprechung aus 4 Möglichkeiten. Schnell und effizient!</p>
+          </div>
+          <button onclick="app.startChallenge('mc')" class="w-full py-3 bg-sky-600 hover:bg-sky-700 text-white font-semibold rounded-xl shadow-md transition-colors flex items-center justify-center space-x-2">
+            <span>MC Modus starten</span>
+            <i class="fas fa-arrow-right text-sm"></i>
+          </button>
+        </div>
+
+        <!-- Mode 3: Free Input -->
+        <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm hover:shadow-md transition-all flex flex-col justify-between group">
+          <div>
+            <div class="w-12 h-12 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center text-xl mb-4 group-hover:scale-110 transition-transform">
+              <i class="fas fa-keyboard"></i>
+            </div>
+            <h3 class="font-display font-bold text-lg text-slate-800 mb-2">3. Freie Eingabe</h3>
+            <p class="text-slate-600 text-sm mb-4">Gib die gesuchte Prozent- oder Dezimalzahl selbst ein. Mit Touch-Zahlenfeld für Mobilgeräte.</p>
+          </div>
+          <button onclick="app.startChallenge('free')" class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl shadow-md transition-colors flex items-center justify-center space-x-2">
+            <span>Eingabe starten</span>
+            <i class="fas fa-arrow-right text-sm"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Quick Stats Summary Widget -->
+      <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div class="flex items-center space-x-4">
+          <div class="w-12 h-12 rounded-full bg-amber-50 text-amber-500 flex items-center justify-center text-xl shrink-0">
+            <i class="fas fa-trophy"></i>
+          </div>
+          <div>
+            <h4 class="font-bold text-slate-800">Heute absolviert</h4>
+            <p class="text-sm text-slate-500" id="todaySummaryText">Noch kein Block absolviert. Starte deinen ersten 5-Minuten Test!</p>
+          </div>
+        </div>
+        <button onclick="app.showScreen('stats')" class="px-4 py-2 border border-slate-200 hover:bg-slate-50 text-slate-700 font-medium rounded-xl text-sm transition-colors whitespace-nowrap">
+          Tagesstatistik ansehen
+        </button>
+      </div>
+    </section>
+
+    <!-- ACTIVE CHALLENGE SCREEN -->
+    <section id="screen-game" class="hidden space-y-4">
+      <!-- Session Bar: Timer & Stats -->
+      <div class="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm flex items-center justify-between flex-wrap gap-3">
+        <!-- Timer Display -->
+        <div class="flex items-center space-x-3 bg-slate-100 px-4 py-2 rounded-xl">
+          <i class="fas fa-clock text-sky-600 text-lg"></i>
+          <span id="gameTimer" class="font-display font-bold text-2xl text-slate-800 tracking-wider">05:00</span>
+        </div>
+
+        <!-- Live Metrics -->
+        <div class="flex items-center space-x-4 text-sm font-semibold">
+          <div class="flex items-center space-x-1.5 text-emerald-600" title="Richtig gelöst">
+            <i class="fas fa-check-circle"></i>
+            <span id="gameScore">0</span>
+          </div>
+          <div class="flex items-center space-x-1.5 text-rose-500" title="Fehlversuche">
+            <i class="fas fa-times-circle"></i>
+            <span id="gameErrors">0</span>
+          </div>
+          <div class="bg-sky-50 text-sky-700 px-3 py-1 rounded-lg" title="Genauigkeit">
+            <span id="gameAccuracy">100%</span>
+          </div>
+        </div>
+
+        <!-- Exit Button -->
+        <button onclick="app.abortChallenge()" class="px-3 py-1.5 border border-slate-200 hover:bg-slate-100 text-slate-500 hover:text-slate-800 rounded-lg text-xs font-medium transition-colors">
+          <i class="fas fa-arrow-left mr-1"></i> Beenden
+        </button>
+      </div>
+
+      <!-- Game Container Dynamic View -->
+      <div id="gameViewContainer" class="bg-white rounded-2xl p-4 sm:p-8 border border-slate-200 shadow-sm min-h-[420px] flex flex-col justify-center">
+        <!-- Content gets dynamically populated by mode renderers -->
+      </div>
+    </section>
+
+    <!-- RESULT SCREEN -->
+    <section id="screen-result" class="hidden space-y-6 max-w-lg mx-auto text-center py-6">
+      <div class="bg-white rounded-3xl p-8 border border-slate-200 shadow-xl space-y-6">
+        <div class="w-20 h-20 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-3xl mx-auto shadow-inner">
+          <i class="fas fa-award"></i>
+        </div>
+
+        <div>
+          <span class="text-xs font-bold uppercase tracking-widest text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full">Zeit abgelaufen!</span>
+          <h2 class="font-display font-bold text-3xl text-slate-800 mt-3">Block Auswertung</h2>
+          <p class="text-slate-500 text-sm mt-1">Super Einsatz! Hier ist dein Ergebnis für die letzten 5 Minuten.</p>
+        </div>
+
+        <!-- Score Breakdown Cards -->
+        <div class="grid grid-cols-2 gap-4 text-left">
+          <div class="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+            <span class="text-xs text-slate-400 font-medium">Gelöste Aufgaben</span>
+            <div id="resultTotal" class="font-display font-bold text-2xl text-slate-800 mt-1">0</div>
+          </div>
+          <div class="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+            <span class="text-xs text-slate-400 font-medium">Korrekt</span>
+            <div id="resultCorrect" class="font-display font-bold text-2xl text-emerald-600 mt-1">0</div>
+          </div>
+          <div class="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+            <span class="text-xs text-slate-400 font-medium">Genauigkeit</span>
+            <div id="resultAccuracy" class="font-display font-bold text-2xl text-sky-600 mt-1">0%</div>
+          </div>
+          <div class="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+            <span class="text-xs text-slate-400 font-medium">Geschwindigkeit</span>
+            <div id="resultSpeed" class="font-display font-bold text-2xl text-indigo-600 mt-1">0 / min</div>
+          </div>
+        </div>
+
+        <div class="pt-4 space-y-3">
+          <button onclick="app.restartSameMode()" class="w-full py-3.5 bg-sky-600 hover:bg-sky-700 text-white font-semibold rounded-xl shadow-md transition-colors flex items-center justify-center space-x-2">
+            <i class="fas fa-redo-alt"></i>
+            <span>Gleichen Modus nochmal spielen</span>
+          </button>
+          <button onclick="app.showScreen('dashboard')" class="w-full py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl transition-colors">
+            Zurück zur Übersicht
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- DAILY STATISTICS SCREEN -->
+    <section id="screen-stats" class="hidden space-y-6">
+      <div class="flex items-center justify-between flex-wrap gap-4">
+        <div>
+          <h2 class="font-display font-bold text-2xl text-slate-800">Deine Tagesstatistik</h2>
+          <p class="text-sm text-slate-500">Übersicht aller absolvierten 5-Minuten Lerneinheiten</p>
+        </div>
+        <button onclick="app.showScreen('dashboard')" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium rounded-xl text-sm transition-colors">
+          <i class="fas fa-arrow-left mr-1"></i> Zum Hauptmenü
+        </button>
+      </div>
+
+      <!-- Stats Overview Banner -->
+      <div class="grid sm:grid-cols-4 gap-4">
+        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+          <span class="text-xs text-slate-400 font-medium">Gesamt Blöcke</span>
+          <div id="statTotalSessions" class="font-display font-bold text-3xl text-slate-800 mt-1">0</div>
+        </div>
+        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+          <span class="text-xs text-slate-400 font-medium">Aufgaben Gelöst</span>
+          <div id="statTotalSolved" class="font-display font-bold text-3xl text-emerald-600 mt-1">0</div>
+        </div>
+        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+          <span class="text-xs text-slate-400 font-medium">Durchschn. Quote</span>
+          <div id="statAvgAccuracy" class="font-display font-bold text-3xl text-sky-600 mt-1">0%</div>
+        </div>
+        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+          <span class="text-xs text-slate-400 font-medium">Bestleistung (5 Min)</span>
+          <div id="statBestScore" class="font-display font-bold text-3xl text-amber-500 mt-1">0</div>
+        </div>
+      </div>
+
+      <!-- History Table -->
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="p-5 border-b border-slate-100 flex items-center justify-between">
+          <h3 class="font-bold text-slate-800">Protokoll nach Tagen</h3>
+          <button onclick="app.clearHistory()" class="text-xs text-rose-500 hover:text-rose-700 font-medium">
+            <i class="fas fa-trash-alt mr-1"></i> Verlauf löschen
+          </button>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-sm">
+            <thead class="bg-slate-50 text-slate-500 font-medium border-b border-slate-100">
+              <tr>
+                <th class="p-4">Datum</th>
+                <th class="p-4">Absolvierte Blöcke</th>
+                <th class="p-4">Gesamt Richtig</th>
+                <th class="p-4">Ø Trefferquote</th>
+                <th class="p-4">Tages-Bestwert</th>
+              </tr>
+            </thead>
+            <tbody id="statsTableBody" class="divide-y divide-slate-100">
+              <!-- Dynamically populated -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="bg-white border-t border-slate-200 py-4 text-center text-xs text-slate-400">
+    Mathe-Profi Übungsseite • Brüche, Dezimalzahlen & Prozent umrechnen
+  </footer>
+
+  <script>
+    /**
+     * Equivalent Math Values Data Repository
+     * Each tuple contains: Fraction Object, Decimal String, Percentage String
+     */
+    const VALUE_PAIRS = [
+      { fraction: { num: 1, den: 2, display: "1/2" }, decimal: "0,5", percent: "50%" },
+      { fraction: { num: 1, den: 4, display: "1/4" }, decimal: "0,25", percent: "25%" },
+      { fraction: { num: 3, den: 4, display: "3/4" }, decimal: "0,75", percent: "75%" },
+      { fraction: { num: 1, den: 5, display: "1/5" }, decimal: "0,2", percent: "20%" },
+      { fraction: { num: 2, den: 5, display: "2/5" }, decimal: "0,4", percent: "40%" },
+      { fraction: { num: 3, den: 5, display: "3/5" }, decimal: "0,6", percent: "60%" },
+      { fraction: { num: 4, den: 5, display: "4/5" }, decimal: "0,8", percent: "80%" },
+      { fraction: { num: 1, den: 10, display: "1/10" }, decimal: "0,1", percent: "10%" },
+      { fraction: { num: 3, den: 10, display: "3/10" }, decimal: "0,3", percent: "30%" },
+      { fraction: { num: 7, den: 10, display: "7/10" }, decimal: "0,7", percent: "70%" },
+      { fraction: { num: 9, den: 10, display: "9/10" }, decimal: "0,9", percent: "90%" },
+      { fraction: { num: 1, den: 8, display: "1/8" }, decimal: "0,125", percent: "12,5%" },
+      { fraction: { num: 3, den: 8, display: "3/8" }, decimal: "0,375", percent: "37,5%" },
+      { fraction: { num: 5, den: 8, display: "5/8" }, decimal: "0,625", percent: "62,5%" },
+      { fraction: { num: 7, den: 8, display: "7/8" }, decimal: "0,875", percent: "87,5%" },
+      { fraction: { num: 1, den: 3, display: "1/3" }, decimal: "0,33", percent: "33,3%" },
+      { fraction: { num: 2, den: 3, display: "2/3" }, decimal: "0,67", percent: "66,7%" },
+      { fraction: { num: 1, den: 1, display: "1/1" }, decimal: "1,0", percent: "100%" }
+    ];
+
+    class MathTrainerApp {
+      constructor() {
+        this.currentScreen = 'dashboard';
+        this.currentMode = null; // 'matching', 'mc', 'free'
+        
+        // Session state
+        this.timerInterval = null;
+        this.timeLeft = 300; // 5 minutes in seconds
+        this.score = 0;
+        this.errors = 0;
+        this.soundEnabled = true;
+
+        // Tone.js Sound Synth
+        this.synth = null;
+
+        // Mode specific state variables
+        this.matchingSelectedTile = null;
+        this.matchingMatchedCount = 0;
+        this.matchingTotalPairs = 0;
+
+        this.freeInputCurrentProblem = null;
+        this.freeInputValue = "";
+
+        this.init();
+      }
+
+      init() {
+        this.loadHistory();
+        this.updateTodaySummary();
+        this.setupKeyboardListeners();
+      }
+
+      initSynth() {
+        if (!this.synth && window.Tone) {
+          try {
+            this.synth = new Tone.Synth().toDestination();
+          } catch(e) {
+            console.log("Audio Context Error", e);
+          }
+        }
+      }
+
+      playSound(type) {
+        if (!this.soundEnabled) return;
+        this.initSynth();
+        if (!this.synth) return;
+
+        try {
+          if (type === 'correct') {
+            this.synth.triggerAttackRelease("C5", "8n");
+          } else if (type === 'wrong') {
+            this.synth.triggerAttackRelease("F3", "8n");
+          } else if (type === 'click') {
+            this.synth.triggerAttackRelease("G4", "16n");
+          } else if (type === 'complete') {
+            const now = Tone.now();
+            this.synth.triggerAttackRelease("C5", "8n", now);
+            this.synth.triggerAttackRelease("E5", "8n", now + 0.15);
+            this.synth.triggerAttackRelease("G5", "4n", now + 0.3);
+          }
+        } catch (e) {
+          // Ignore audio play errors if gesture context is missing
+        }
+      }
+
+      toggleSound() {
+        this.soundEnabled = !this.soundEnabled;
+        const btn = document.getElementById('soundToggleBtn');
+        btn.innerHTML = this.soundEnabled ? '<i class="fas fa-volume-up text-lg"></i>' : '<i class="fas fa-volume-mute text-lg text-rose-500"></i>';
+      }
+
+      showScreen(screenName) {
+        document.querySelectorAll('main > section').forEach(el => el.classList.add('hidden'));
+        document.getElementById(`screen-${screenName}`).classList.remove('hidden');
+        this.currentScreen = screenName;
+
+        if (screenName === 'stats') {
+          this.renderStatsScreen();
+        } else if (screenName === 'dashboard') {
+          this.updateTodaySummary();
+        }
+      }
+
+      startChallenge(mode) {
+        this.currentMode = mode;
+        this.score = 0;
+        this.errors = 0;
+        this.timeLeft = 300; // 5 minutes (300 seconds)
+        
+        this.updateStatsBar();
+        this.showScreen('game');
+
+        // Start Countdown Timer
+        clearInterval(this.timerInterval);
+        this.updateTimerDisplay();
+        this.timerInterval = setInterval(() => {
+          this.timeLeft--;
+          this.updateTimerDisplay();
+          if (this.timeLeft <= 0) {
+            this.endChallenge();
+          }
+        }, 1000);
+
+        // Render first view according to mode
+        if (mode === 'matching') {
+          this.setupMatchingGrid();
+        } else if (mode === 'mc') {
+          this.nextMultipleChoiceProblem();
+        } else if (mode === 'free') {
+          this.nextFreeInputProblem();
+        }
+      }
+
+      abortChallenge() {
+        clearInterval(this.timerInterval);
+        this.showScreen('dashboard');
+      }
+
+      restartSameMode() {
+        if (this.currentMode) {
+          this.startChallenge(this.currentMode);
+        } else {
+          this.showScreen('dashboard');
+        }
+      }
+
+      updateTimerDisplay() {
+        const mins = Math.floor(this.timeLeft / 60);
+        const secs = this.timeLeft % 60;
+        const display = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        document.getElementById('gameTimer').innerText = display;
+
+        const timerContainer = document.getElementById('gameTimer').parentElement;
+        if (this.timeLeft <= 30) {
+          timerContainer.classList.add('bg-rose-100', 'text-rose-600', 'animate-pulse');
+        } else {
+          timerContainer.classList.remove('bg-rose-100', 'text-rose-600', 'animate-pulse');
+        }
+      }
+
+      updateStatsBar() {
+        document.getElementById('gameScore').innerText = this.score;
+        document.getElementById('gameErrors').innerText = this.errors;
+        
+        const total = this.score + this.errors;
+        const accuracy = total > 0 ? Math.round((this.score / total) * 100) : 100;
+        document.getElementById('gameAccuracy').innerText = `${accuracy}%`;
+      }
+
+      setupMatchingGrid() {
+        const container = document.getElementById('gameViewContainer');
+        
+        // Pick 4 random pair sets (total 8 cards: e.g. fractions & percentages/decimals)
+        const shuffledPairs = [...VALUE_PAIRS].sort(() => 0.5 - Math.random()).slice(0, 4);
+        
+        let tiles = [];
+        shuffledPairs.forEach((pair, pairId) => {
+          // Select two distinct representations for each pair
+          const types = ['fraction', 'decimal', 'percent'].sort(() => 0.5 - Math.random());
+          const typeA = types[0];
+          const typeB = types[1];
+
+          tiles.push({ pairId, type: typeA, val: pair[typeA], raw: pair });
+          tiles.push({ pairId, type: typeB, val: pair[typeB], raw: pair });
+        });
+
+        tiles.sort(() => 0.5 - Math.random());
+        this.matchingSelectedTile = null;
+        this.matchingMatchedCount = 0;
+        this.matchingTotalPairs = 4;
+
+        container.innerHTML = `
+          <div class="space-y-4">
+            <div class="text-center">
+              <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Zuordnungs-Raster</span>
+              <h3 class="font-display font-bold text-xl text-slate-800">Finde alle wertgleichen Paare!</h3>
+            </div>
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 md:gap-4 max-w-2xl mx-auto py-2" id="matchingGrid">
+              ${tiles.map((tile, idx) => `
+                <button onclick="app.handleTileClick(${idx}, ${tile.pairId})" id="tile-${idx}" 
+                  class="tile-card h-28 rounded-2xl border-2 border-slate-200 bg-white font-display font-bold text-xl sm:text-2xl text-slate-700 shadow-sm flex items-center justify-center p-2 hover:border-sky-300">
+                  ${this.formatTileValue(tile.val)}
+                </button>
+              `).join('')}
+            </div>
+          </div>
+        `;
+        this.currentGridTiles = tiles;
+      }
+
+      formatTileValue(val) {
+        if (typeof val === 'object' && val.num) {
+          return `
+            <div class="fraction">
+              <span class="numerator">${val.num}</span>
+              <span class="denominator">${val.den}</span>
+            </div>
+          `;
+        }
+        return `<span>${val}</span>`;
+      }
+
+      handleTileClick(tileIdx, pairId) {
+        const tileBtn = document.getElementById(`tile-${tileIdx}`);
+        if (!tileBtn || tileBtn.classList.contains('tile-matched')) return;
+
+        this.playSound('click');
+
+        if (!this.matchingSelectedTile) {
+          // First card selected
+          this.matchingSelectedTile = { idx: tileIdx, pairId: pairId, btn: tileBtn };
+          tileBtn.classList.add('tile-selected');
+        } else {
+          // Second card selected
+          if (this.matchingSelectedTile.idx === tileIdx) {
+            // Unselect same tile
+            tileBtn.classList.remove('tile-selected');
+            this.matchingSelectedTile = null;
+            return;
+          }
+
+          const prevTile = this.matchingSelectedTile;
+          if (prevTile.pairId === pairId) {
+            // MATCH SUCCESS!
+            this.playSound('correct');
+            prevTile.btn.classList.remove('tile-selected');
+            prevTile.btn.classList.add('tile-matched');
+            tileBtn.classList.add('tile-matched');
+
+            this.score++;
+            this.matchingMatchedCount++;
+            this.updateStatsBar();
+
+            this.matchingSelectedTile = null;
+
+            // Check if grid completed
+            if (this.matchingMatchedCount === this.matchingTotalPairs) {
+              setTimeout(() => {
+                this.setupMatchingGrid(); // Load next grid instantly
+              }, 400);
+            }
+          } else {
+            // WRONG MATCH
+            this.playSound('wrong');
+            prevTile.btn.classList.remove('tile-selected');
+            prevTile.btn.classList.add('tile-wrong');
+            tileBtn.classList.add('tile-wrong');
+
+            this.errors++;
+            this.updateStatsBar();
+
+            setTimeout(() => {
+              prevTile.btn.classList.remove('tile-wrong');
+              tileBtn.classList.remove('tile-wrong');
+            }, 500);
+
+            this.matchingSelectedTile = null;
+          }
+        }
+      }
+
+      nextMultipleChoiceProblem() {
+        const container = document.getElementById('gameViewContainer');
+        const pair = VALUE_PAIRS[Math.floor(Math.random() * VALUE_PAIRS.length)];
+
+        const types = ['fraction', 'decimal', 'percent'].sort(() => 0.5 - Math.random());
+        const targetType = types[0];
+        const optionType = types[1];
+
+        // Pick 3 distractor values of optionType
+        const distractors = VALUE_PAIRS
+          .filter(p => p !== pair)
+          .sort(() => 0.5 - Math.random())
+          .slice(0, 3)
+          .map(p => p[optionType]);
+
+        const options = [pair[optionType], ...distractors].sort(() => 0.5 - Math.random());
+
+        const typeLabels = { fraction: 'Bruch', decimal: 'Dezimalzahl', percent: 'Prozentwert' };
+
+        container.innerHTML = `
+          <div class="max-w-md mx-auto space-y-6 w-full">
+            <div class="text-center space-y-2">
+              <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Welcher Wert entspricht?</span>
+              <div class="bg-sky-50 rounded-2xl p-6 border border-sky-100 flex items-center justify-center min-h-[110px]">
+                <div class="font-display font-bold text-4xl text-sky-700">
+                  ${this.formatTileValue(pair[targetType])}
+                </div>
+              </div>
+              <p class="text-xs text-slate-500">Gesucht als <span class="font-semibold text-slate-700">${typeLabels[optionType]}</span></p>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3" id="mcOptions">
+              ${options.map((opt) => `
+                <button onclick="app.handleMCOptionClick(this, '${opt === pair[optionType]}')" 
+                  class="py-4 px-3 rounded-2xl border-2 border-slate-200 bg-white hover:border-sky-400 font-display font-bold text-xl text-slate-700 shadow-sm transition-all">
+                  ${this.formatTileValue(opt)}
+                </button>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      }
+
+      handleMCOptionClick(btn, isCorrect) {
+        const allBtns = document.querySelectorAll('#mcOptions button');
+        allBtns.forEach(b => b.disabled = true);
+
+        if (isCorrect === 'true') {
+          this.playSound('correct');
+          btn.classList.add('bg-emerald-500', 'text-white', 'border-emerald-500');
+          this.score++;
+        } else {
+          this.playSound('wrong');
+          btn.classList.add('bg-rose-500', 'text-white', 'border-rose-500');
+          this.errors++;
+        }
+
+        this.updateStatsBar();
+        setTimeout(() => {
+          this.nextMultipleChoiceProblem();
+        }, 500);
+      }
+
+      nextFreeInputProblem() {
+        const container = document.getElementById('gameViewContainer');
+        const pair = VALUE_PAIRS[Math.floor(Math.random() * VALUE_PAIRS.length)];
+
+        // Ask for either Decimal or Percentage from Fraction
+        const targetType = Math.random() > 0.5 ? 'decimal' : 'percent';
+        this.freeInputCurrentProblem = { pair, targetType };
+        this.freeInputValue = "";
+
+        container.innerHTML = `
+          <div class="max-w-md mx-auto space-y-5 w-full">
+            <div class="text-center space-y-2">
+              <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Wandle um:</span>
+              <div class="bg-indigo-50 rounded-2xl p-4 border border-indigo-100 flex items-center justify-center min-h-[90px]">
+                <div class="font-display font-bold text-4xl text-indigo-700">
+                  ${this.formatTileValue(pair.fraction)}
+                </div>
+              </div>
+              <p class="text-xs text-slate-500">Gib als <span class="font-semibold text-slate-700">${targetType === 'decimal' ? 'Dezimalzahl (z.B. 0,5)' : 'Prozentwert (z.B. 50%)'}</span> ein</p>
+            </div>
+
+            <!-- Display Box -->
+            <div class="relative">
+              <input type="text" id="freeInputDisplay" readonly value="" placeholder="Deine Antwort..." 
+                class="w-full text-center font-display font-bold text-2xl py-3 px-4 rounded-xl border-2 border-slate-300 bg-slate-50 text-slate-800 shadow-inner focus:outline-none">
+            </div>
+
+            <!-- Touch Keypad -->
+            <div class="grid grid-cols-3 gap-2 max-w-xs mx-auto">
+              ${['1','2','3','4','5','6','7','8','9','0',',','%'].map(key => `
+                <button onclick="app.handleKeypad('${key}')" class="py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 active:bg-slate-300 font-display font-bold text-xl text-slate-700 transition-colors shadow-sm">
+                  ${key}
+                </button>
+              `).join('')}
+              <button onclick="app.handleKeypad('back')" class="col-span-1 py-2.5 rounded-xl bg-slate-200 hover:bg-slate-300 font-bold text-slate-700 transition-colors">
+                <i class="fas fa-backspace"></i>
+              </button>
+              <button onclick="app.submitFreeInput()" class="col-span-2 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 font-bold text-white transition-colors shadow-md">
+                Bestätigen <i class="fas fa-check ml-1"></i>
+              </button>
+            </div>
+          </div>
+        `;
+      }
+
+      handleKeypad(key) {
+        this.playSound('click');
+        const display = document.getElementById('freeInputDisplay');
+        if (!display) return;
+
+        if (key === 'back') {
+          this.freeInputValue = this.freeInputValue.slice(0, -1);
+        } else {
+          if (this.freeInputValue.length < 8) {
+            this.freeInputValue += key;
+          }
+        }
+        display.value = this.freeInputValue;
+      }
+
+      setupKeyboardListeners() {
+        document.addEventListener('keydown', (e) => {
+          if (this.currentScreen !== 'game' || this.currentMode !== 'free') return;
+          
+          if ((e.key >= '0' && e.key <= '9') || e.key === ',' || e.key === '.' || e.key === '%') {
+            const char = e.key === '.' ? ',' : e.key;
+            this.handleKeypad(char);
+          } else if (e.key === 'Backspace') {
+            this.handleKeypad('back');
+          } else if (e.key === 'Enter') {
+            this.submitFreeInput();
+          }
+        });
+      }
+
+      submitFreeInput() {
+        if (!this.freeInputCurrentProblem || !this.freeInputValue) return;
+
+        const expected = this.freeInputCurrentProblem.pair[this.freeInputCurrentProblem.targetType];
+        
+        // Normalize comparison (strip whitespace & handle commas/dots)
+        const userNorm = this.freeInputValue.trim().toLowerCase().replace('.', ',');
+        const expNorm = expected.trim().toLowerCase().replace('.', ',');
+
+        const display = document.getElementById('freeInputDisplay');
+
+        if (userNorm === expNorm || userNorm === expNorm.replace('%', '')) {
+          this.playSound('correct');
+          if (display) display.classList.add('border-emerald-500', 'bg-emerald-50');
+          this.score++;
+        } else {
+          this.playSound('wrong');
+          if (display) {
+            display.classList.add('border-rose-500', 'bg-rose-50');
+            display.value = `${this.freeInputValue} (Richtig: ${expected})`;
+          }
+          this.errors++;
+        }
+
+        this.updateStatsBar();
+        setTimeout(() => {
+          this.nextFreeInputProblem();
+        }, 800);
+      }
+
+      endChallenge() {
+        clearInterval(this.timerInterval);
+        this.playSound('complete');
+
+        const total = this.score + this.errors;
+        const accuracy = total > 0 ? Math.round((this.score / total) * 100) : 0;
+        const speedPerMin = (this.score / 5).toFixed(1);
+
+        document.getElementById('resultTotal').innerText = total;
+        document.getElementById('resultCorrect').innerText = this.score;
+        document.getElementById('resultAccuracy').innerText = `${accuracy}%`;
+        document.getElementById('resultSpeed').innerText = `${speedPerMin} / min`;
+
+        this.saveSessionResult({
+          date: new Date().toISOString().split('T')[0],
+          timestamp: Date.now(),
+          mode: this.currentMode,
+          solved: total,
+          correct: this.score,
+          accuracy: accuracy
+        });
+
+        this.showScreen('result');
+      }
+
+      saveSessionResult(session) {
+        let history = JSON.parse(localStorage.getItem('mathe_profi_history') || '[]');
+        history.push(session);
+        localStorage.setItem('mathe_profi_history', JSON.stringify(history));
+      }
+
+      loadHistory() {
+        return JSON.parse(localStorage.getItem('mathe_profi_history') || '[]');
+      }
+
+      clearHistory() {
+        if (confirm('Möchtest du wirklich deinen gesamten Übungsverlauf löschen?')) {
+          localStorage.removeItem('mathe_profi_history');
+          this.renderStatsScreen();
+          this.updateTodaySummary();
+        }
+      }
+
+      updateTodaySummary() {
+        const history = this.loadHistory();
+        const todayStr = new Date().toISOString().split('T')[0];
+        const todaySessions = history.filter(s => s.date === todayStr);
+
+        const summaryEl = document.getElementById('todaySummaryText');
+        if (summaryEl) {
+          if (todaySessions.length === 0) {
+            summaryEl.innerText = "Noch kein 5-Minuten Block absolviert. Starte deinen ersten Durchgang!";
+          } else {
+            const totalCorrect = todaySessions.reduce((acc, s) => acc + s.correct, 0);
+            summaryEl.innerText = `${todaySessions.length} Block/Blöcke absolviert (${totalCorrect} richtige Aufgaben). Weiter so!`;
+          }
+        }
+      }
+
+      renderStatsScreen() {
+        const history = this.loadHistory();
+        
+        // Aggregate totals
+        const totalSessions = history.length;
+        const totalSolved = history.reduce((acc, s) => acc + s.correct, 0);
+        const avgAccuracy = totalSessions > 0 
+          ? Math.round(history.reduce((acc, s) => acc + s.accuracy, 0) / totalSessions) 
+          : 0;
+        const bestScore = history.reduce((max, s) => s.correct > max ? s.correct : max, 0);
+
+        document.getElementById('statTotalSessions').innerText = totalSessions;
+        document.getElementById('statTotalSolved').innerText = totalSolved;
+        document.getElementById('statAvgAccuracy').innerText = `${avgAccuracy}%`;
+        document.getElementById('statBestScore').innerText = bestScore;
+
+        // Group by Date
+        const grouped = {};
+        history.forEach(s => {
+          if (!grouped[s.date]) {
+            grouped[s.date] = { sessions: 0, correct: 0, accuracySum: 0, maxScore: 0 };
+          }
+          grouped[s.date].sessions += 1;
+          grouped[s.date].correct += s.correct;
+          grouped[s.date].accuracySum += s.accuracy;
+          if (s.correct > grouped[s.date].maxScore) {
+            grouped[s.date].maxScore = s.correct;
+          }
+        });
+
+        const tbody = document.getElementById('statsTableBody');
+        const sortedDates = Object.keys(grouped).sort((a,b) => b.localeCompare(a));
+
+        if (sortedDates.length === 0) {
+          tbody.innerHTML = `
+            <tr>
+              <td colspan="5" class="p-6 text-center text-slate-400">Noch keine Daten vorhanden. Absolviere eine 5-Minuten Challenge!</td>
+            </tr>
+          `;
+          return;
+        }
+
+        tbody.innerHTML = sortedDates.map(date => {
+          const item = grouped[date];
+          const avgAcc = Math.round(item.accuracySum / item.sessions);
+          const formattedDate = new Date(date).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+
+          return `
+            <tr class="hover:bg-slate-50 transition-colors">
+              <td class="p-4 font-semibold text-slate-700">${formattedDate}</td>
+              <td class="p-4 text-slate-600">${item.sessions} Blöcke</td>
+              <td class="p-4 font-semibold text-emerald-600">${item.correct}</td>
+              <td class="p-4 text-sky-600 font-medium">${avgAcc}%</td>
+              <td class="p-4 font-bold text-amber-500">${item.maxScore}</td>
+            </tr>
+          `;
+        }).join('');
+      }
+    }
+
+    let app;
+    window.onload = function() {
+      app = new MathTrainerApp();
+    };
+  </script>
+</body>
+</html>
