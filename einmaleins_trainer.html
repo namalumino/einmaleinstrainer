@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Einmaleins Challenge (1 bis 12)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    .numpad-btn:active { transform: scale(0.95); }
+    .animate-bounce-short { animation: bounce 0.4s ease infinite alternate; }
+    @keyframes bounce {
+      from { transform: translateY(0); }
+      to { transform: translateY(-8px); }
+    }
+  </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col items-center justify-center p-4 selection:bg-indigo-500 selection:text-white">
+
+  <div class="w-full max-w-lg bg-slate-800 border border-slate-700 rounded-3xl shadow-2xl overflow-hidden flex flex-col">
+    
+    <!-- Header / Navigation -->
+    <header class="bg-slate-800/80 backdrop-blur border-b border-slate-700 p-5 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-xl font-bold text-white shadow-lg shadow-indigo-500/30">
+          ×
+        </div>
+        <div>
+          <h1 class="font-extrabold text-lg leading-tight text-white">Einmaleins 1–12</h1>
+          <p class="text-xs text-slate-400">5-Minuten Speedrun</p>
+        </div>
+      </div>
+      <button id="stats-toggle-btn" onclick="toggleStatsModal()" class="px-3 py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs font-semibold rounded-xl transition flex items-center space-x-1 border border-slate-600">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+        <span>Statistik</span>
+      </button>
+    </header>
+
+    <main class="p-6 flex-1 flex flex-col justify-between">
+
+      <section id="start-screen" class="flex flex-col items-center justify-center text-center py-8 space-y-6">
+        <div class="w-20 h-20 rounded-full bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center text-indigo-400 text-3xl font-bold animate-pulse">
+          ⚡
+        </div>
+        <div class="space-y-2">
+          <h2 class="text-2xl font-bold text-white">Bereit für den 5-Minuten-Test?</h2>
+          <p class="text-slate-400 text-sm max-w-xs mx-auto">
+            Löse in 5 Minuten so viele Multiplikationsaufgaben der 1er- bis 12er-Malreihe wie möglich!
+          </p>
+        </div>
+        <button onclick="startSession()" class="w-full py-4 bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white font-bold rounded-2xl shadow-lg shadow-indigo-600/30 transition transform hover:-translate-y-0.5 text-lg">
+          Jetzt Starten (5:00)
+        </button>
+      </section>
+
+      <section id="game-screen" class="hidden flex flex-col space-y-5">
+        
+        <!-- Status Bar: Timer & Live Counter -->
+        <div class="flex items-center justify-between bg-slate-900/60 border border-slate-700/60 rounded-2xl px-4 py-3">
+          <div class="flex items-center space-x-2">
+            <svg class="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            <span id="timer" class="font-mono text-xl font-bold text-indigo-300">05:00</span>
+          </div>
+          <div class="flex items-center space-x-4 text-xs font-semibold">
+            <span class="text-emerald-400">Richtig: <span id="live-correct" class="text-sm font-bold">0</span></span>
+            <span class="text-rose-400">Fehler: <span id="live-wrong" class="text-sm font-bold">0</span></span>
+          </div>
+        </div>
+
+        <!-- Task Card & Feedback Display -->
+        <div class="relative bg-slate-900 border border-slate-700/80 rounded-2xl p-6 text-center shadow-inner min-h-[160px] flex flex-col justify-center items-center">
+          <div id="feedback-badge" class="absolute top-3 px-3 py-1 rounded-full text-xs font-bold transition-all opacity-0 transform -translate-y-2"></div>
+          
+          <div id="problem-text" class="text-4xl sm:text-5xl font-extrabold text-white tracking-wide my-2">
+            12 × 12
+          </div>
+          
+          <div class="w-full max-w-[200px] mt-2 relative">
+            <input type="text" id="answer-field" readonly placeholder="?" class="w-full text-center text-3xl font-bold bg-slate-800 text-indigo-300 border-2 border-indigo-500/40 rounded-xl py-2 px-4 outline-none shadow-sm">
+          </div>
+        </div>
+
+        <!-- On-Screen Numpad -->
+        <div class="grid grid-cols-3 gap-3 max-w-xs mx-auto w-full">
+          <button onclick="pressNum('1')" class="numpad-btn h-14 bg-slate-700 hover:bg-slate-600 text-white font-bold text-2xl rounded-xl border border-slate-600 transition shadow">1</button>
+          <button onclick="pressNum('2')" class="numpad-btn h-14 bg-slate-700 hover:bg-slate-600 text-white font-bold text-2xl rounded-xl border border-slate-600 transition shadow">2</button>
+          <button onclick="pressNum('3')" class="numpad-btn h-14 bg-slate-700 hover:bg-slate-600 text-white font-bold text-2xl rounded-xl border border-slate-600 transition shadow">3</button>
+          <button onclick="pressNum('4')" class="numpad-btn h-14 bg-slate-700 hover:bg-slate-600 text-white font-bold text-2xl rounded-xl border border-slate-600 transition shadow">4</button>
+          <button onclick="pressNum('5')" class="numpad-btn h-14 bg-slate-700 hover:bg-slate-600 text-white font-bold text-2xl rounded-xl border border-slate-600 transition shadow">5</button>
+          <button onclick="pressNum('6')" class="numpad-btn h-14 bg-slate-700 hover:bg-slate-600 text-white font-bold text-2xl rounded-xl border border-slate-600 transition shadow">6</button>
+          <button onclick="pressNum('7')" class="numpad-btn h-14 bg-slate-700 hover:bg-slate-600 text-white font-bold text-2xl rounded-xl border border-slate-600 transition shadow">7</button>
+          <button onclick="pressNum('8')" class="numpad-btn h-14 bg-slate-700 hover:bg-slate-600 text-white font-bold text-2xl rounded-xl border border-slate-600 transition shadow">8</button>
+          <button onclick="pressNum('9')" class="numpad-btn h-14 bg-slate-700 hover:bg-slate-600 text-white font-bold text-2xl rounded-xl border border-slate-600 transition shadow">9</button>
+          <button onclick="clearAnswer()" class="numpad-btn h-14 bg-rose-500/20 hover:bg-rose-500/30 text-rose-400 font-bold text-xl rounded-xl border border-rose-500/30 transition shadow">C</button>
+          <button onclick="pressNum('0')" class="numpad-btn h-14 bg-slate-700 hover:bg-slate-600 text-white font-bold text-2xl rounded-xl border border-slate-600 transition shadow">0</button>
+          <button onclick="submitAnswer()" class="numpad-btn h-14 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xl rounded-xl border border-indigo-500 transition shadow">OK</button>
+        </div>
+      </section>
+
+      <section id="result-screen" class="hidden flex flex-col items-center text-center py-4 space-y-6">
+        <div class="space-y-1">
+          <span class="text-xs font-bold uppercase tracking-widest text-indigo-400">Session Beendet</span>
+          <h2 class="text-3xl font-extrabold text-white">Zeit abgelaufen! 🎉</h2>
+        </div>
+
+        <div class="w-full grid grid-cols-2 gap-3">
+          <div class="bg-slate-900 border border-slate-700/60 p-4 rounded-2xl">
+            <span class="text-xs text-slate-400 font-medium">Gelöst</span>
+            <div id="res-total" class="text-2xl font-black text-white mt-1">0</div>
+          </div>
+          <div class="bg-slate-900 border border-slate-700/60 p-4 rounded-2xl">
+            <span class="text-xs text-slate-400 font-medium">Genauigkeit</span>
+            <div id="res-accuracy" class="text-2xl font-black text-indigo-400 mt-1">0%</div>
+          </div>
+          <div class="bg-slate-900 border border-slate-700/60 p-4 rounded-2xl">
+            <span class="text-xs text-slate-400 font-medium">Richtig</span>
+            <div id="res-correct" class="text-2xl font-black text-emerald-400 mt-1">0</div>
+          </div>
+          <div class="bg-slate-900 border border-slate-700/60 p-4 rounded-2xl">
+            <span class="text-xs text-slate-400 font-medium">Fehler</span>
+            <div id="res-wrong" class="text-2xl font-black text-rose-400 mt-1">0</div>
+          </div>
+        </div>
+
+        <button onclick="startSession()" class="w-full py-4 bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white font-bold rounded-2xl shadow-lg transition text-lg">
+          Neue Runde starten
+        </button>
+      </section>
+
+    </main>
+  </div>
+
+  <div id="stats-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
+    <div class="bg-slate-800 border border-slate-700 w-full max-w-md rounded-3xl p-6 shadow-2xl flex flex-col max-h-[85vh]">
+      <div class="flex items-center justify-between pb-4 border-b border-slate-700">
+        <h3 class="text-lg font-bold text-white flex items-center space-x-2">
+          <span>📊</span> <span>Tagesstatistik</span>
+        </h3>
+        <button onclick="toggleStatsModal()" class="text-slate-400 hover:text-white p-1">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
+      </div>
+
+      <!-- Quick Summary Stats -->
+      <div class="grid grid-cols-2 gap-3 my-4">
+        <div class="bg-slate-900 p-3 rounded-xl border border-slate-700/50">
+          <span class="text-xs text-slate-400">Tages-Bestwert</span>
+          <div id="stat-high-score" class="text-xl font-bold text-emerald-400">0 Rechnungen</div>
+        </div>
+        <div class="bg-slate-900 p-3 rounded-xl border border-slate-700/50">
+          <span class="text-xs text-slate-400">Gesamt Gelöst</span>
+          <div id="stat-total-solved" class="text-xl font-bold text-indigo-400">0</div>
+        </div>
+      </div>
+
+      <!-- History List -->
+      <div class="flex-1 overflow-y-auto pr-1 space-y-2" id="stats-history-list">
+        <!-- Dynamic content -->
+      </div>
+
+      <div class="pt-4 border-t border-slate-700 mt-4 flex justify-between items-center">
+        <button onclick="clearStats()" class="text-xs text-rose-400 hover:underline">Statistik zurücksetzen</button>
+        <button onclick="toggleStatsModal()" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white text-xs font-bold rounded-xl">Schließen</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let timerInterval = null;
+    let timeLeft = 300;
+    let num1 = 0;
+    let num2 = 0;
+    let countCorrect = 0;
+    let countWrong = 0;
+    let isProcessing = false;
+
+    const startScreen = document.getElementById('start-screen');
+    const gameScreen = document.getElementById('game-screen');
+    const resultScreen = document.getElementById('result-screen');
+    const answerField = document.getElementById('answer-field');
+    const problemText = document.getElementById('problem-text');
+    const timerDisplay = document.getElementById('timer');
+    const feedbackBadge = document.getElementById('feedback-badge');
+
+    function getRandomInt(min, max) {
+      return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+
+    function generateTask() {
+      num1 = getRandomInt(1, 12);
+      num2 = getRandomInt(1, 12);
+      problemText.innerText = `${num1} × ${num2}`;
+      answerField.value = '';
+      hideFeedback();
+    }
+
+    function startSession() {
+      countCorrect = 0;
+      countWrong = 0;
+      timeLeft = 300;
+      isProcessing = false;
+
+      document.getElementById('live-correct').innerText = '0';
+      document.getElementById('live-wrong').innerText = '0';
+
+      startScreen.classList.add('hidden');
+      resultScreen.classList.add('hidden');
+      gameScreen.classList.remove('hidden');
+
+      generateTask();
+      updateTimerDisplay();
+
+      if (timerInterval) clearInterval(timerInterval);
+      timerInterval = setInterval(() => {
+        timeLeft--;
+        updateTimerDisplay();
+        if (timeLeft <= 0) {
+          endSession();
+        }
+      }, 1000);
+    }
+
+    function updateTimerDisplay() {
+      const minutes = Math.floor(timeLeft / 60);
+      const seconds = timeLeft % 60;
+      timerDisplay.innerText = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    }
+
+    function pressNum(digit) {
+      if (isProcessing) return;
+      if (answerField.value.length < 4) {
+        answerField.value += digit;
+      }
+    }
+
+    function clearAnswer() {
+      if (isProcessing) return;
+      answerField.value = '';
+    }
+
+    function submitAnswer() {
+      if (isProcessing || answerField.value === '') return;
+
+      const userAns = parseInt(answerField.value, 10);
+      const correctAns = num1 * num2;
+      isProcessing = true;
+
+      if (userAns === correctAns) {
+        countCorrect++;
+        document.getElementById('live-correct').innerText = countCorrect;
+        showFeedback("Richtig! ✨", "bg-emerald-500/20 text-emerald-400 border border-emerald-500/40");
+      } else {
+        countWrong++;
+        document.getElementById('live-wrong').innerText = countWrong;
+        showFeedback(`Falsch! (${num1}×${num2} = ${correctAns})`, "bg-rose-500/20 text-rose-400 border border-rose-500/40");
+      }
+
+      setTimeout(() => {
+        generateTask();
+        isProcessing = false;
+      }, 600);
+    }
+
+    function showFeedback(text, classes) {
+      feedbackBadge.innerText = text;
+      feedbackBadge.className = `absolute top-3 px-3 py-1 rounded-full text-xs font-bold transition-all ${classes} opacity-100 transform translate-y-0`;
+    }
+
+    function hideFeedback() {
+      feedbackBadge.className = "absolute top-3 px-3 py-1 rounded-full text-xs font-bold transition-all opacity-0 transform -translate-y-2";
+    }
+
+    function endSession() {
+      clearInterval(timerInterval);
+      gameScreen.classList.add('hidden');
+      resultScreen.classList.remove('hidden');
+
+      const total = countCorrect + countWrong;
+      const accuracy = total > 0 ? Math.round((countCorrect / total) * 100) : 0;
+
+      document.getElementById('res-total').innerText = total;
+      document.getElementById('res-correct').innerText = countCorrect;
+      document.getElementById('res-wrong').innerText = countWrong;
+      document.getElementById('res-accuracy').innerText = `${accuracy}%`;
+
+      saveStats(countCorrect, countWrong, total);
+    }
+
+    // --- LocalStorage Statistics ---
+    function saveStats(correct, wrong, total) {
+      const today = new Date().toISOString().split('T')[0];
+      let stats = JSON.parse(localStorage.getItem('malti_stats_v2') || '{}');
+
+      if (!stats[today]) {
+        stats[today] = { sessions: 0, correct: 0, wrong: 0, total: 0, bestSession: 0 };
+      }
+
+      stats[today].sessions += 1;
+      stats[today].correct += correct;
+      stats[today].wrong += wrong;
+      stats[today].total += total;
+      if (total > stats[today].bestSession) {
+        stats[today].bestSession = total;
+      }
+
+      localStorage.setItem('malti_stats_v2', JSON.stringify(stats));
+      renderStats();
+    }
+
+    function renderStats() {
+      const stats = JSON.parse(localStorage.getItem('malti_stats_v2') || '{}');
+      const listEl = document.getElementById('stats-history-list');
+      listEl.innerHTML = '';
+
+      const dates = Object.keys(stats).sort().reverse();
+      let globalBest = 0;
+      let globalTotal = 0;
+
+      if (dates.length === 0) {
+        listEl.innerHTML = `<div class="text-center text-slate-500 py-6 text-sm">Noch keine Trainingseinheiten gespeichert.</div>`;
+      } else {
+        dates.forEach(date => {
+          const item = stats[date];
+          if (item.bestSession > globalBest) globalBest = item.bestSession;
+          globalTotal += item.total;
+
+          const acc = item.total > 0 ? Math.round((item.correct / item.total) * 100) : 0;
+
+          const div = document.createElement('div');
+          div.className = 'bg-slate-900 border border-slate-700/60 p-3 rounded-xl flex items-center justify-between text-xs';
+          div.innerHTML = `
+            <div>
+              <div class="font-bold text-white">${date}</div>
+              <div class="text-slate-400">${item.sessions} Session(s)</div>
+            </div>
+            <div class="text-right">
+              <div class="font-bold text-indigo-400">${item.total} Rechnungen (${acc}%)</div>
+              <div class="text-slate-400">Bestwert: ${item.bestSession}</div>
+            </div>
+          `;
+          listEl.appendChild(div);
+        });
+      }
+
+      document.getElementById('stat-high-score').innerText = `${globalBest} Rechnungen`;
+      document.getElementById('stat-total-solved').innerText = globalTotal;
+    }
+
+    function clearStats() {
+      if (confirm("Möchtest du wirklich alle Tagesstatistiken zurücksetzen?")) {
+        localStorage.removeItem('malti_stats_v2');
+        renderStats();
+      }
+    }
+
+    function toggleStatsModal() {
+      const modal = document.getElementById('stats-modal');
+      modal.classList.toggle('hidden');
+      if (!modal.classList.contains('hidden')) {
+        renderStats();
+      }
+    }
+
+    // --- Keyboard Integration ---
+    document.addEventListener('keydown', (e) => {
+      if (gameScreen.classList.contains('hidden')) return;
+
+      if (e.key >= '0' && e.key <= '9') {
+        pressNum(e.key);
+      } else if (e.key === 'Backspace') {
+        clearAnswer();
+      } else if (e.key === 'Enter') {
+        submitAnswer();
+      }
+    });
+
+    // Initial Stats Load
+    renderStats();
+  </script>
+</body>
+</html>
